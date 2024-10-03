@@ -10,6 +10,8 @@ bool ColorsEqual(Color color1, Color color2) {
            (color1.b == color2.b) && (color1.a == color2.a);
 }
 
+Color DARKRED = { 128, 0, 0, 255 };  // Dark red color
+
 int main(void) {
     
     const int screenWidth = 1600;
@@ -26,45 +28,69 @@ int main(void) {
         }
     }    
 
-    // bool visitedCells[screenWidth / gridSize][screenHeight / gridSize];
+    std::pair<int,int> start = {-1, -1},
+                       end = {-1, -1}; // starting and ending points of our grid
 
-    // for(int i = 0; i < screenWidth / gridSize; i += 1){
-    //     for(int j = 0; j < screenHeight / gridSize; j += 1){
-    //         visitedCells[i][j] = 0;
-    //     }
-    // }
+    bool changeStarting = false;
+    bool changeEnding = false;
 
     while(!WindowShouldClose()){
         BeginDrawing();
 
-        // bool mouseHeld = false;
+        if (IsKeyPressed(KEY_S))
+            changeStarting = true;
+        if (IsKeyPressed(KEY_E))
+            changeEnding = true;
         
-        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)){
+        if (!changeStarting && !changeEnding && IsMouseButtonDown(MOUSE_BUTTON_LEFT)){
             // Fill a cell
             // All cells in a visited
-            // mouseHeld = true;
             Vector2 pos = GetMousePosition();
             int X = pos.x / gridSize;
             int Y = pos.y / gridSize;
 
-            if (pos.x < screenWidth && pos.y < screenHeight){
-                // visitedCells[X][Y] = 1;
-                // std::cout << X << " " << Y << " " << visitedCells[X][Y] << std::endl;
-                // if (ColorsEqual(gridColor[X][Y], LIGHTGRAY)) 
+            if (pos.x < screenWidth && pos.y < screenHeight && ColorsEqual(gridColor[X][Y], LIGHTGRAY)){
                 gridColor[X][Y] = DARKGRAY;
-                // else
-                //     gridColor[X][Y] = LIGHTGRAY;
             }
-        }    
+        }   
 
-        // else if (mouseHeld && IsMouseButtonUp(MOUSE_BUTTON_LEFT)){
-        //     mouseHeld = false;
-        //     for(int i = 0; i < screenWidth / gridSize; i += 1){
-        //         for(int j = 0; j < screenHeight / gridSize; j += 1){
-        //             visitedCells[i][j] = 0;
-        //         }
-        //     }
-        // }
+        if (changeStarting == true){
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)){
+                if (start != std::make_pair(-1, -1)){
+                    gridColor[start.first][start.second] = LIGHTGRAY;
+                }
+                Vector2 pos = GetMousePosition();
+                int X = pos.x / gridSize;
+                int Y = pos.y / gridSize;
+
+                if (pos.x < screenWidth && pos.y < screenHeight){
+                    if (!ColorsEqual(gridColor[X][Y], DARKRED)){
+                        start = std::make_pair(X, Y);
+                        gridColor[X][Y] = DARKGREEN;
+                        changeStarting = false;
+                    }
+                }
+            }
+        } 
+
+        if (changeEnding == true){
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)){
+                if (end != std::make_pair(-1, -1)){
+                    gridColor[end.first][end.second] = LIGHTGRAY;
+                }
+                Vector2 pos = GetMousePosition();
+                int X = pos.x / gridSize;
+                int Y = pos.y / gridSize;
+
+                if (pos.x < screenWidth && pos.y < screenHeight){
+                    if (!ColorsEqual(gridColor[X][Y], DARKGREEN)){
+                        end = std::make_pair(X, Y);
+                        gridColor[X][Y] = DARKRED;
+                        changeEnding = false;
+                    }
+                }
+            }
+        } 
 
         if (IsKeyDown(KEY_T)){
             // Clear a cell
@@ -73,7 +99,8 @@ int main(void) {
                 int X = pos.x / gridSize;
                 int Y = pos.y / gridSize;
 
-                if (pos.x < screenWidth && pos.y < screenHeight){
+                if (pos.x < screenWidth && pos.y < screenHeight &&
+                    std::make_pair(X, Y) != start && std::make_pair(X, Y) != end){
                     gridColor[X][Y] = LIGHTGRAY;
                 }
             }    
