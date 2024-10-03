@@ -21,8 +21,11 @@ int dr[4] = {-1, 0, 1, 0};
 int dc[4] = {0, 1, 0, -1};
 int bfs_checks = 0;
 
-const int screenWidth = 1600 - 200;
+const int gridWidth = 1400;
+const int screenWidth = gridWidth + 200;
 const int screenHeight = 1200;
+const int gridHeight = screenHeight;
+
 int path_length = 0;
 
 const int gridSize = 50; // Size of each grid cell;
@@ -33,10 +36,10 @@ void bfs(std::pair<int,int> &start, std::pair<int,int> &end, std::vector<std::ve
     std::queue<std::vector<int>> q;
     q.push({start.first, start.second, 0});
 
-    int visited[screenWidth / gridSize][screenHeight / gridSize];
-    std::pair<int,int> parent[screenWidth / gridSize][screenHeight / gridSize];
+    int visited[gridWidth / gridSize][screenHeight / gridSize];
+    std::pair<int,int> parent[gridWidth / gridSize][screenHeight / gridSize];
 
-    for(int x = 0; x < screenWidth; x += gridSize){
+    for(int x = 0; x < gridWidth; x += gridSize){
         for(int y = 0; y < screenHeight; y += gridSize){
             visited[x / gridSize][y / gridSize] = 0;
             parent[x / gridSize][y / gridSize] = std::make_pair(-1, -1);
@@ -59,15 +62,16 @@ void bfs(std::pair<int,int> &start, std::pair<int,int> &end, std::vector<std::ve
         for(int i=0; i<4; i++){
             int nr = r + dr[i];
             int nc = c + dc[i];
-            if (nr < 0 || nr >= screenWidth / gridSize || nc < 0 || nc >= screenHeight / gridSize) continue;
+            if (nr < 0 || nr >= gridWidth / gridSize || nc < 0 || nc >= screenHeight / gridSize) continue;
             if (visited[nr][nc]) continue;
             if (visited[end.first][end.second]) continue;
             if (ColorsEqual(gridColor[nr][nc], DARKGRAY)) continue;
 
             visited[nr][nc] = 1;
-            bfs_checks++;
-            if (ColorsEqual(gridColor[nr][nc], LIGHTGRAY))
+            if (ColorsEqual(gridColor[nr][nc], LIGHTGRAY)){
                 gridColor[nr][nc] = DARKBLUE;
+                bfs_checks++;
+            }
             parent[nr][nc] = std::make_pair(r, c);
             q.push({nr, nc, d + 1});
         }
@@ -88,15 +92,41 @@ void bfs(std::pair<int,int> &start, std::pair<int,int> &end, std::vector<std::ve
     time_taken = duration.count() * 1000;  // time in ms
 }
 
+void startBFS(std::pair<int,int> &start, std::pair<int,int> &end, 
+              std::pair<int,int> &prev_start, std::pair<int,int> &prev_end,
+              std::vector<std::vector<Color>> &gridColor,
+              int flag){
+
+    if (start != std::make_pair(-1, -1) && end != std::make_pair(-1, -1) && (start != prev_start || end != prev_end || flag)){
+        prev_end = end;
+        prev_start = start;
+        for(int i = 0; i < gridWidth / gridSize; i += 1){
+            for(int j = 0; j < screenHeight / gridSize; j += 1){
+                if (!ColorsEqual(gridColor[i][j], DARKGRAY)
+                    && !ColorsEqual(gridColor[i][j], DARKRED)
+                    && !ColorsEqual(gridColor[i][j], DARKGREEN)){
+                    gridColor[i][j] = LIGHTGRAY;
+                }
+            }
+        }
+        path_length = 0;
+        bfs_checks = 0;
+        time_taken = 0;
+        bfs(start, end, gridColor);
+    }
+
+}
+
 int main(void) {
     
     
-    InitWindow(screenWidth + 200, screenHeight, "Pathfinding Visualizer");
+    InitWindow(screenWidth, screenHeight, "Pathfinding Visualizer");
     
     SetTargetFPS(60);
     
-    std::vector<std::vector<Color>> gridColor(screenWidth / gridSize, std::vector<Color>(screenHeight / gridSize));
-    for(int i = 0; i < screenWidth / gridSize; i += 1){
+    std::vector<std::vector<Color>> gridColor(gridWidth / gridSize, std::vector<Color>(screenHeight / gridSize));
+    std::vector<std::vector<Color>> walls(gridWidth / gridSize, std::vector<Color>(screenHeight / gridSize));
+    for(int i = 0; i < gridWidth / gridSize; i += 1){
         for(int j = 0; j < screenHeight / gridSize; j += 1){
             gridColor[i][j] = LIGHTGRAY;
         }
@@ -127,8 +157,11 @@ int main(void) {
             int X = pos.x / gridSize;
             int Y = pos.y / gridSize;
 
-            if (pos.x < screenWidth && pos.y < screenHeight && ColorsEqual(gridColor[X][Y], LIGHTGRAY)){
+            if (pos.x < gridWidth && pos.y < screenHeight 
+                && !ColorsEqual(gridColor[X][Y], DARKRED)
+                && !ColorsEqual(gridColor[X][Y], DARKGREEN)){
                 gridColor[X][Y] = DARKGRAY;
+                startBFS(start, end, prev_start, prev_end, gridColor, 1);
             }
         }   
 
@@ -138,7 +171,7 @@ int main(void) {
                 int X = pos.x / gridSize;
                 int Y = pos.y / gridSize;
 
-                if (pos.x < screenWidth && pos.y < screenHeight){
+                if (pos.x < gridWidth && pos.y < screenHeight){
                     if (!ColorsEqual(gridColor[X][Y], DARKRED)){
                         if (start != std::make_pair(-1, -1)){
                             gridColor[start.first][start.second] = LIGHTGRAY;
@@ -159,7 +192,7 @@ int main(void) {
                 int X = pos.x / gridSize;
                 int Y = pos.y / gridSize;
 
-                if (pos.x < screenWidth && pos.y < screenHeight){
+                if (pos.x < gridWidth && pos.y < screenHeight){
                     if (!ColorsEqual(gridColor[X][Y], DARKGREEN)){
                         if (end != std::make_pair(-1, -1)){
                             gridColor[end.first][end.second] = LIGHTGRAY;
@@ -181,15 +214,27 @@ int main(void) {
                 int X = pos.x / gridSize;
                 int Y = pos.y / gridSize;
 
-                if (pos.x < screenWidth && pos.y < screenHeight &&
-                    std::make_pair(X, Y) != start && std::make_pair(X, Y) != end){
+                if (pos.x < gridWidth && pos.y < screenHeight
+                    && ColorsEqual(gridColor[X][Y], DARKGRAY)
+                    ){
+                    // startBFS = true;
+                    // std::cout << X << " " << Y << " \n";
+                    // std::cout << ColorsEqual(gridColor[X][Y], DARKGRAY) << "\n";
+                    // std::cout << ColorsEqual(gridColor[X][Y], DARKBLUE) << "\n";
                     gridColor[X][Y] = LIGHTGRAY;
+                    startBFS(start, end, prev_start, prev_end, gridColor, 1);
+                
+                    // std::cout << ColorsEqual(gridColor[X][Y], DARKBLUE) << "\n";
+                    // std::cout << ColorsEqual(gridColor[X][Y], LIGHTGRAY) << "\n";
+
+                    // walls[X][Y] = LIGHTGRAY;
+                    // std::cout << gridColor[X][Y] << "\n";
                 }
             }    
         }
 
         if (IsKeyPressed(KEY_C)){
-            for(int x = 0; x < screenWidth; x += gridSize){
+            for(int x = 0; x < gridWidth; x += gridSize){
                 for(int y = 0; y < screenHeight; y += gridSize){
                     gridColor[x / gridSize][y / gridSize] = LIGHTGRAY;
                 }
@@ -200,38 +245,22 @@ int main(void) {
             end = std::make_pair(-1, -1);
         }  
         
-        if (start != std::make_pair(-1, -1) && end != std::make_pair(-1, -1) && (start != prev_start || end != prev_end)){
-            prev_end = end;
-            prev_start = start;
-            for(int i = 0; i < screenWidth / gridSize; i += 1){
-                for(int j = 0; j < screenHeight / gridSize; j += 1){
-                    if (!ColorsEqual(gridColor[i][j], DARKGRAY)
-                        && !ColorsEqual(gridColor[i][j], DARKRED)
-                        && !ColorsEqual(gridColor[i][j], DARKGREEN)){
-                        gridColor[i][j] = LIGHTGRAY;
-                    }
-                }
-            }
-            path_length = 0;
-            bfs_checks = 0;
-            time_taken = 0;
-            bfs(start, end, gridColor);
-        }
+        startBFS(start, end, prev_start, prev_end, gridColor, 0);
 
         ClearBackground(RAYWHITE);
 
-        for(int x = 0; x < screenWidth; x += gridSize){
+        for(int x = 0; x < gridWidth; x += gridSize){
             for(int y = 0; y < screenHeight; y += gridSize){
                 DrawRectangle(x, y, gridSize, gridSize, gridColor[x/gridSize][y/gridSize]);
                 DrawRectangleLines(x, y, gridSize, gridSize, DARKGRAY);
             }
         }
 
-        DrawRectangle(screenWidth + 200, 0, 200, screenHeight, Fade(RAYWHITE, 0.5f)); // Sidebar background
-        DrawText("BFS", screenWidth + 5, 20, 20, DARKGRAY);
-        DrawText(TextFormat("Checks: %d", bfs_checks), screenWidth + 5, 60, 20, DARKGRAY);
-        DrawText(TextFormat("Path Length: %d", path_length), screenWidth + 5, 100, 20, DARKGRAY);
-        DrawText(TextFormat("Time Taken: %.4f ms", time_taken), screenWidth + 10, 140, 20, DARKGRAY);
+        DrawRectangle(screenWidth, 0, 200, screenHeight, Fade(RAYWHITE, 0.5f)); // Sidebar background
+        DrawText("BFS", screenWidth - 190, 20, 20, DARKGRAY);
+        DrawText(TextFormat("Checks: %d", bfs_checks+1), screenWidth - 190, 60, 20, DARKGRAY);
+        DrawText(TextFormat("Path Length: %d", path_length), screenWidth - 190, 100, 20, DARKGRAY);
+        DrawText(TextFormat("Time Taken: %.4f ms", time_taken), screenWidth - 190, 140, 20, DARKGRAY);
 
         EndDrawing();
     }
