@@ -16,8 +16,8 @@ bool ColorsEqual(Color color1, Color color2) {
 Color DARKRED = { 128, 0, 0, 255 };  // Dark red color
 Color DARKYELLOW = { 204, 204, 0, 255 };  // Dark yellow color
 
-int currentAlgo = 1;
-int prev_currentAlgo = 0;
+int currentAlgo = 3;
+// by default, A*
 
 // implement bfs algorithm
 int dr[4] = {-1, 0, 1, 0};
@@ -35,7 +35,7 @@ int path_length_bfs = 0;
 int path_length_dijakstra = 0;
 int path_length_a_star = 0;
 
-const int gridSize = 50; // Size of each grid cell;
+const int gridSize = 20; // Size of each grid cell;
 float time_taken_bfs = 0.0f;    // Variable to store the time taken
 float time_taken_dijakstra = 0.0f;    // Variable to store the time taken
 float time_taken_a_star = 0.0f;    // Variable to store the time taken
@@ -57,7 +57,7 @@ void bfs(std::pair<int,int> &start, std::pair<int,int> &end,
 
     bool path_found = false;
     auto start_time = std::chrono::high_resolution_clock::now();
-    
+
     while(!q.empty()){
         int r = q.front()[0];
         int c = q.front()[1];
@@ -126,7 +126,6 @@ void startBFS(std::pair<int,int> &start, std::pair<int,int> &end,
         path_length_bfs = 0;
         checks_bfs = 0;
         time_taken_bfs = 0;
-        prev_currentAlgo = currentAlgo;
         bfs(start, end, gridColor);
     }
 }
@@ -224,7 +223,6 @@ void startDIJAKSTRA(std::pair<int,int> &start, std::pair<int,int> &end,
         path_length_dijakstra = 0;
         checks_dijakstra = 0;
         time_taken_dijakstra = 0;
-        prev_currentAlgo = currentAlgo;
         dijakstra(start, end, gridColor);
     }
 }
@@ -328,7 +326,6 @@ void startA_STAR(std::pair<int,int> &start, std::pair<int,int> &end,
         path_length_a_star = 0;
         checks_a_star = 0;
         time_taken_a_star = 0;
-        prev_currentAlgo = currentAlgo;
         a_star(start, end, gridColor);
     }
 }
@@ -370,7 +367,7 @@ int main(void) {
 
         if (IsKeyPressed(KEY_ONE)){
             currentAlgo = 1;
-            // A* algo
+            // BFS algo
         }
 
         if (IsKeyPressed(KEY_TWO)){
@@ -380,7 +377,7 @@ int main(void) {
 
         if (IsKeyPressed(KEY_THREE)){
             currentAlgo = 3;
-            // BFS
+            // A*
         }
         
         if (!changeStarting && !changeEnding && IsMouseButtonDown(MOUSE_BUTTON_LEFT)){
@@ -418,7 +415,6 @@ int main(void) {
                             start[k] = std::make_pair(X, Y);
                             gridColor[k][X][Y] = DARKGREEN;
                             changeStarting = false;
-                            prev_currentAlgo = -1;
                         }
                     }
                 }
@@ -488,17 +484,6 @@ int main(void) {
         startBFS(start[1] , end[1], prev_start[1], prev_end[1], gridColor[1], 0);
         startDIJAKSTRA(start[2], end[2], prev_start[2], prev_end[2] , gridColor[2], 0);
         startA_STAR(start[3], end[3], prev_start[3], prev_end[3], gridColor[3], 0);
-        // for(int i=0; i<gridWidth/gridSize; i++){
-        //     for(int j=0; j<gridHeight/gridSize; j++){
-        //         gridColor[i][j] = gridColor2[i][j];
-        //     }
-        // }
-        // startDIJAKSTRA(start, end, prev_start, prev_end, gridColor, 0, (currentAlgo == 2 ? 0 : 1));
-        // for(int i=0; i<gridWidth/gridSize; i++){
-        //     for(int j=0; j<gridHeight/gridSize; j++){
-        //         gridColor[i][j] = gridColor2[i][j];
-        //     }
-        // }
 
         ClearBackground(RAYWHITE);
 
