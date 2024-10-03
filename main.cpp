@@ -1,5 +1,5 @@
 #include "raylib.h"
-
+#include<iostream>
 // We cant compare two Color directly, since each has:
 // r (red)
 // g (green)
@@ -26,21 +26,66 @@ int main(void) {
         }
     }    
 
+    // bool visitedCells[screenWidth / gridSize][screenHeight / gridSize];
+
+    // for(int i = 0; i < screenWidth / gridSize; i += 1){
+    //     for(int j = 0; j < screenHeight / gridSize; j += 1){
+    //         visitedCells[i][j] = 0;
+    //     }
+    // }
+
     while(!WindowShouldClose()){
         BeginDrawing();
+
+        // bool mouseHeld = false;
         
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)){
+        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)){
+            // Fill a cell
+            // All cells in a visited
+            // mouseHeld = true;
             Vector2 pos = GetMousePosition();
             int X = pos.x / gridSize;
             int Y = pos.y / gridSize;
 
             if (pos.x < screenWidth && pos.y < screenHeight){
-                if (ColorsEqual(gridColor[X][Y], LIGHTGRAY)) 
-                    gridColor[X][Y] = DARKGRAY;
-                else
-                    gridColor[X][Y] = LIGHTGRAY;
+                // visitedCells[X][Y] = 1;
+                // std::cout << X << " " << Y << " " << visitedCells[X][Y] << std::endl;
+                // if (ColorsEqual(gridColor[X][Y], LIGHTGRAY)) 
+                gridColor[X][Y] = DARKGRAY;
+                // else
+                //     gridColor[X][Y] = LIGHTGRAY;
             }
-        }        
+        }    
+
+        // else if (mouseHeld && IsMouseButtonUp(MOUSE_BUTTON_LEFT)){
+        //     mouseHeld = false;
+        //     for(int i = 0; i < screenWidth / gridSize; i += 1){
+        //         for(int j = 0; j < screenHeight / gridSize; j += 1){
+        //             visitedCells[i][j] = 0;
+        //         }
+        //     }
+        // }
+
+        if (IsKeyDown(KEY_T)){
+            // Clear a cell
+            if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)){
+                Vector2 pos = GetMousePosition();
+                int X = pos.x / gridSize;
+                int Y = pos.y / gridSize;
+
+                if (pos.x < screenWidth && pos.y < screenHeight){
+                    gridColor[X][Y] = LIGHTGRAY;
+                }
+            }    
+        }
+
+        if (IsKeyPressed(KEY_C)){
+            for(int x = 0; x < screenWidth; x += gridSize){
+                for(int y = 0; y < screenHeight; y += gridSize){
+                    gridColor[x / gridSize][y / gridSize] = LIGHTGRAY;
+                }
+            }
+        }    
 
         ClearBackground(RAYWHITE);
 
