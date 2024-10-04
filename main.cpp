@@ -24,7 +24,7 @@ int path_length_a_star = 0;
 Color DARKRED = { 128, 0, 0, 255 };  // Dark red color
 Color DARKYELLOW = { 204, 204, 0, 255 };  // Dark yellow color
 
-int currentAlgo = 1;
+int currentAlgo = 3;
 // by default, A*
 
 int dr[8] = {-1, 0, 1, 0, -1, 1, -1, 1};
