@@ -3,6 +3,7 @@
 #include <vector>
 #include <queue>
 #include <chrono>
+#include <cmath>
 // We cant compare two Color directly, since each has:
 // r (red)
 // g (green)
@@ -20,8 +21,8 @@ int currentAlgo = 3;
 // by default, A*
 
 // implement bfs algorithm
-int dr[4] = {-1, 0, 1, 0};
-int dc[4] = {0, 1, 0, -1};
+int dr[8] = {-1, 0, 1, 0, -1, 1, -1, 1};
+int dc[8] = {0, 1, 0, -1, -1, -1, 1, 1};
 int checks_bfs = 0;
 int checks_dijakstra = 0;
 int checks_a_star = 0;
@@ -35,12 +36,26 @@ int path_length_bfs = 0;
 int path_length_dijakstra = 0;
 int path_length_a_star = 0;
 
-const int gridSize = 20; // Size of each grid cell;
+const int gridSize = 50; // Size of each grid cell;
 float time_taken_bfs = 0.0f;    // Variable to store the time taken
 float time_taken_dijakstra = 0.0f;    // Variable to store the time taken
 float time_taken_a_star = 0.0f;    // Variable to store the time taken
 
-void bfs(std::pair<int,int> &start, std::pair<int,int> &end, 
+struct Node{
+    double total_cost; // heuristic + cost
+    double cost; // cost = distance from source
+    int r;
+    int c;
+
+    Node(double _total_cost, double _cost, int _r, int _c) : total_cost(_total_cost), cost(_cost), r(_r), c(_c) {}
+};
+
+auto dist = [](std::pair<int,int> a, std::pair<int,int> b) ->double{
+    return sqrt((a.first-b.first)*(a.first-b.first)+(a.second-b.second)*(a.second-b.second));
+};
+
+void bfs(std::pair<int,int> &start, 
+    std::pair<int,int> &end, 
     std::vector<std::vector<Color>> &gridColor){
     std::queue<std::vector<int>> q;
     q.push({start.first, start.second, 0});
@@ -70,13 +85,14 @@ void bfs(std::pair<int,int> &start, std::pair<int,int> &end,
         }
 
         q.pop();
-        for(int i=0; i<4; i++){
+        for(int i=0; i<8; i++){
             int nr = r + dr[i];
             int nc = c + dc[i];
             if (nr < 0 || nr >= gridWidth / gridSize || nc < 0 || nc >= screenHeight / gridSize) continue;
             if (visited[nr][nc]) continue;
             if (visited[end.first][end.second]) continue;
             if (ColorsEqual(gridColor[nr][nc], DARKGRAY)) continue;
+            if (i>3 && ColorsEqual(gridColor[nr][c], DARKGRAY) && ColorsEqual(gridColor[r][nc], DARKGRAY)) continue;
 
             visited[nr][nc] = 1;
             if (ColorsEqual(gridColor[nr][nc], LIGHTGRAY)){
@@ -106,10 +122,11 @@ void bfs(std::pair<int,int> &start, std::pair<int,int> &end,
     time_taken_bfs = duration.count() * 1000;  // time in ms
 }
 
-void startBFS(std::pair<int,int> &start, std::pair<int,int> &end, 
-              std::pair<int,int> &prev_start, std::pair<int,int> &prev_end,
-              std::vector<std::vector<Color>> &gridColor,
-              int flag){
+void startBFS(std::pair<int,int> &start, 
+    std::pair<int,int> &end, 
+    std::pair<int,int> &prev_start, std::pair<int,int> &prev_end,
+    std::vector<std::vector<Color>> &gridColor,
+    int flag){
 
     if (start != std::make_pair(-1, -1) && end != std::make_pair(-1, -1) && (start != prev_start || end != prev_end || flag)){
         prev_end = end;
@@ -130,13 +147,21 @@ void startBFS(std::pair<int,int> &start, std::pair<int,int> &end,
     }
 }
 
-void dijakstra(std::pair<int,int> &start, std::pair<int,int> &end, 
+void dijakstra(std::pair<int,int> &start, 
+    std::pair<int,int> &end, 
     std::vector<std::vector<Color>> &gridColor){
-    std::priority_queue<std::vector<int>, std::vector<std::vector<int>>, std::greater<std::vector<int>>> q;
-    q.push({0, start.first, start.second});
+
+    auto compare = [](Node a, Node b){
+        if (a.total_cost == b.total_cost) return a.cost > b.cost;
+        return a.total_cost > b.total_cost;
+    };
+
+    // start    
+    std::priority_queue<Node, std::vector<Node>, decltype(compare)> q(compare);
+    q.push(Node(0, 0, start.first, start.second));
 
     std::pair<int,int> parent[gridWidth / gridSize][screenHeight / gridSize];
-    int distance[gridWidth / gridSize][screenHeight / gridSize];
+    double distance[gridWidth / gridSize][screenHeight / gridSize];
     for(int x = 0; x < gridWidth / gridSize; x++){
         for(int y = 0; y < screenHeight / gridSize; y++){
             distance[x][y] = 1e9;
@@ -151,13 +176,14 @@ void dijakstra(std::pair<int,int> &start, std::pair<int,int> &end,
     auto start_time = std::chrono::high_resolution_clock::now();
 
     while(!q.empty()){
-        int d = q.top()[0];
-        int r = q.top()[1];
-        int c = q.top()[2];
+        Node node = q.top();
         q.pop();
 
+        double cost = node.cost;
+        int r = node.r;
+        int c = node.c;
         // If the popped element is not the shortest known distance, skip it
-        if (d > distance[r][c]) continue;
+        if (node.cost != distance[r][c]) continue;
 
         // Check if we have reached the destination
         if (end == std::make_pair(r, c)){
@@ -165,15 +191,17 @@ void dijakstra(std::pair<int,int> &start, std::pair<int,int> &end,
             break;
         }
 
-        for(int i=0; i<4; i++){
+        for(int i=0; i<8; i++){
             int nr = r + dr[i];
             int nc = c + dc[i];
             if (nr < 0 || nr >= gridWidth / gridSize || nc < 0 || nc >= screenHeight / gridSize) continue;
             if (ColorsEqual(gridColor[nr][nc], DARKGRAY)) continue; // Skip walls
+            if (i>3 && ColorsEqual(gridColor[nr][c], DARKGRAY) && ColorsEqual(gridColor[r][nc], DARKGRAY)) continue;
 
             // Only consider this new path if it is better
-            if (d + 1 < distance[nr][nc]) {
-                distance[nr][nc] = d + 1;
+            double new_cost = cost + dist({nr, nc}, {r, c});
+            if (new_cost < distance[nr][nc]) {
+                distance[nr][nc] = new_cost;
                 checks_dijakstra++;
 
                 if (ColorsEqual(gridColor[nr][nc], LIGHTGRAY)){
@@ -181,32 +209,33 @@ void dijakstra(std::pair<int,int> &start, std::pair<int,int> &end,
                 }
                 
                 parent[nr][nc] = std::make_pair(r, c);
-                q.push({distance[nr][nc], nr, nc}); // Push the new distance
+                q.push(Node(new_cost, new_cost, nr, nc));
             }
         }
     }
     
     // Trace back the path if found
     if (path_found){
+        path_length_dijakstra++;
         gridColor[end.first][end.second] = DARKRED;
         std::pair<int, int> path = parent[end.first][end.second];
         while (path != start) {
             gridColor[path.first][path.second] = DARKYELLOW;
             path = parent[path.first][path.second];
+            path_length_dijakstra++;
         }
         gridColor[path.first][path.second] = DARKGREEN; // repainting start point
     }
     
-    path_length_dijakstra = distance[end.first][end.second];
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<float> duration = end_time - start_time;
     time_taken_dijakstra = duration.count() * 1000;  // time in ms
 }
 
 void startDIJAKSTRA(std::pair<int,int> &start, std::pair<int,int> &end, 
-              std::pair<int,int> &prev_start, std::pair<int,int> &prev_end,
-              std::vector<std::vector<Color>> &gridColor,
-              int flag){
+    std::pair<int,int> &prev_start, std::pair<int,int> &prev_end,
+    std::vector<std::vector<Color>> &gridColor,
+    int flag){
 
     if (start != std::make_pair(-1, -1) && end != std::make_pair(-1, -1) && (start != prev_start || end != prev_end || flag)){
         prev_end = end;
@@ -227,20 +256,31 @@ void startDIJAKSTRA(std::pair<int,int> &start, std::pair<int,int> &end,
     }
 }
 
-void a_star(std::pair<int,int> &start, std::pair<int,int> &end, 
+void a_star(std::pair<int,int> &start, 
+    std::pair<int,int> &end, 
     std::vector<std::vector<Color>> &gridColor){
-    std::priority_queue<std::vector<int>, std::vector<std::vector<int>>, std::greater<std::vector<int>>> q;
+
+    auto compare = [](Node a, Node b){
+        if (a.total_cost == b.total_cost) return a.cost > b.cost;
+        return a.total_cost > b.total_cost;
+    };
+
+    std::priority_queue<Node, std::vector<Node>, decltype(compare)> q(compare);
 
     auto heuristic = [&](std::pair<int,int> a, std::pair<int,int> b){
         return abs(a.first - b.first) + abs(a.second - b.second);
     };
 
-    q.push({heuristic(start, end), 0, start.first, start.second}); // cost + heuristic, cost, row, col
+    // auto heuristic = [&](std::pair<int,int> a, std::pair<int,int> b){
+    //     return dist(a, b);
+    // };
+
+    q.push(Node(heuristic(start, end), 0, start.first, start.second)); // cost + heuristic, cost, row, col
     // cost = distance from start point
     // heuristic = some kind of heuristic we decide
 
     std::pair<int,int> parent[gridWidth / gridSize][screenHeight / gridSize];
-    int distance[gridWidth / gridSize][screenHeight / gridSize];
+    double distance[gridWidth / gridSize][screenHeight / gridSize];
     for(int x = 0; x < gridWidth / gridSize; x++){
         for(int y = 0; y < screenHeight / gridSize; y++){
             distance[x][y] = 1e9;
@@ -254,29 +294,29 @@ void a_star(std::pair<int,int> &start, std::pair<int,int> &end,
     auto start_time = std::chrono::high_resolution_clock::now();
 
     while(!q.empty()){
-        int cost = q.top()[1];
-        int r = q.top()[2];
-        int c = q.top()[3];
+        Node node = q.top();
         q.pop();
 
-        // If the popped element is not the shortest known distance, skip it
-        if (cost > distance[r][c]) continue;
-
+        int r = node.r;
+        int c = node.c;
+        
         // Check if we have reached the destination
         if (end == std::make_pair(r, c)){
             path_found = true;
             break;
         }
 
-        for(int i=0; i<4; i++){
+        for(int i=0; i<8; i++){
             int nr = r + dr[i];
             int nc = c + dc[i];
             if (nr < 0 || nr >= gridWidth / gridSize || nc < 0 || nc >= screenHeight / gridSize) continue;
             if (ColorsEqual(gridColor[nr][nc], DARKGRAY)) continue; // Skip walls
+            if (i>3 && ColorsEqual(gridColor[nr][c], DARKGRAY) && ColorsEqual(gridColor[r][nc], DARKGRAY)) continue;
 
             // Only consider this new path if it is better
-            if (cost + 1 < distance[nr][nc]) {
-                distance[nr][nc] = cost + 1;
+            double new_cost = node.cost + dist({nr, nc}, {r, c});
+            if (new_cost < distance[nr][nc]) {
+                distance[nr][nc] = new_cost;
                 checks_a_star++;
 
                 if (ColorsEqual(gridColor[nr][nc], LIGHTGRAY)){
@@ -284,32 +324,33 @@ void a_star(std::pair<int,int> &start, std::pair<int,int> &end,
                 }
                 
                 parent[nr][nc] = std::make_pair(r, c);
-                q.push({cost + 1 + heuristic({nr, nc}, end), cost + 1, nr, nc}); // Push the new distance
+                q.push(Node(new_cost + heuristic({nr, nc}, end), new_cost, nr, nc)); // Push the new distance
             }
         }
     }
     
     // Trace back the path if found
     if (path_found){
+        path_length_a_star++;
         gridColor[end.first][end.second] = DARKRED;
         std::pair<int, int> path = parent[end.first][end.second];
         while (path != start) {
             gridColor[path.first][path.second] = DARKYELLOW;
             path = parent[path.first][path.second];
+            path_length_a_star++;
         }
         gridColor[path.first][path.second] = DARKGREEN; // repainting start point
     }
     
-    path_length_a_star = distance[end.first][end.second];
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<float> duration = end_time - start_time;
     time_taken_a_star = duration.count() * 1000;  // time in ms
 }
 
 void startA_STAR(std::pair<int,int> &start, std::pair<int,int> &end, 
-              std::pair<int,int> &prev_start, std::pair<int,int> &prev_end,
-              std::vector<std::vector<Color>> &gridColor,
-              int flag){
+    std::pair<int,int> &prev_start, std::pair<int,int> &prev_end,
+    std::vector<std::vector<Color>> &gridColor,
+    int flag){
 
     if (start != std::make_pair(-1, -1) && end != std::make_pair(-1, -1) && (start != prev_start || end != prev_end || flag)){
         prev_end = end;
@@ -330,6 +371,19 @@ void startA_STAR(std::pair<int,int> &start, std::pair<int,int> &end,
     }
 }
 
+// void drawButton(Rectangle button, const char* text, Color buttonColor, Color textColor) {
+//     DrawRectangleRec(button, buttonColor);  // Draw the button
+//     int textWidth = MeasureText(text, 20);  // Calculate the text width
+//     DrawText(text, button.x + (button.width - textWidth) / 2, button.y + 10, 20, textColor);  // Draw centered text
+// }
+
+// bool isButtonPressed(Rectangle button) {
+//     return (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && CheckCollisionPointRec(GetMousePosition(), button));
+// }
+
+void GenerateMaze(){
+
+}
 
 int main(void) {
     
@@ -353,8 +407,11 @@ int main(void) {
     bool changeEnding = false;
     std::pair<int,int> start[4] = {{-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}},
                        end[4] = {{-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}}; // starting and ending points of our grid
+
+    // Rectangle generateMaze = {screenWidth - 50, screenHeight - 50, 50, 50};
     
     while(!WindowShouldClose()){
+        // drawButton(generateMaze, "Generate Maze", DARKGRAY, WHITE);
 
         BeginDrawing();
 
@@ -377,8 +434,12 @@ int main(void) {
 
         if (IsKeyPressed(KEY_THREE)){
             currentAlgo = 3;
-            // A*
+            // A* algo
         }
+
+        // if (isButtonPressed(generateMaze)) {
+            // GenerateMaze();
+        // }
         
         if (!changeStarting && !changeEnding && IsMouseButtonDown(MOUSE_BUTTON_LEFT)){
             // Fill a cell
