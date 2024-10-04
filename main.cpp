@@ -14,11 +14,6 @@ bool ColorsEqual(Color color1, Color color2) {
            (color1.b == color2.b) && (color1.a == color2.a);
 }
 
-struct Cell {
-    int x, y;
-    bool isWall;
-};
-
 int found_bfs_path = 0;
 int found_dijakstra_path = 0;
 int found_a_star_path = 0;
@@ -135,7 +130,6 @@ void dijakstraStep(std::pair<int,int> &start,
     double cost = node.cost;
     int r = node.r;
     int c = node.c;
-    // If the popped element is not the shortest known distance, skip it
     if (cost != distance[r][c]) return;
 
     // Check if we have reached the destination
@@ -196,7 +190,6 @@ void aStarStep(std::pair<int,int> &start,
     double cost = node.cost;
     int r = node.r;
     int c = node.c;
-    // If the popped element is not the shortest known distance, skip it
     if (cost != distance[r][c]) return;
 
     // Check if we have reached the destination
@@ -212,13 +205,12 @@ void aStarStep(std::pair<int,int> &start,
             if (ColorsEqual(gridColor[nr][nc], DARKGRAY)) continue; // Skip walls
             if (i>3 && ColorsEqual(gridColor[nr][c], DARKGRAY) && ColorsEqual(gridColor[r][nc], DARKGRAY)) continue;
 
-            // Only consider this new path if it is better
             double new_cost = cost + dist({nr, nc}, {r, c});
             if (new_cost < distance[nr][nc]) {
                 distance[nr][nc] = new_cost;
 
                 if (ColorsEqual(gridColor[nr][nc], LIGHTGRAY)){
-                    gridColor[nr][nc] = DARKBLUE; // Mark as visited
+                    gridColor[nr][nc] = DARKBLUE; 
                 }
                 
                 par[nr][nc] = std::make_pair(r, c);
@@ -243,46 +235,35 @@ void aStarStep(std::pair<int,int> &start,
 
 
 void generateMaze(std::vector<std::vector<Color>> &gridColor) {
-    static std::vector<Cell> walls; // Stores walls
-    static bool initialized = false;
-    
-    if (!initialized) {
-        // Initialize the grid
-        for (int x = 0; x < gridWidth / gridSize; x++) {
-            for (int y = 0; y < screenHeight / gridSize; y++) {
-                gridColor[x][y] = DARKGRAY; // Set all cells as walls
-            }
+
+    for (int x = 0; x < gridWidth / gridSize; x++) {
+        for (int y = 0; y < screenHeight / gridSize; y++) {
+            gridColor[x][y] = DARKGRAY; // Set all cells as walls
         }
-
-        // Randomly select a starting cell
-        int startX = rand() % (gridWidth / gridSize);
-        int startY = rand() % (screenHeight / gridSize);
-        gridColor[startX][startY] = LIGHTGRAY; // Start cell
-        walls.push_back({startX, startY, false}); // Mark it as a cell
-
-        initialized = true;
     }
 
-    if (!walls.empty()) {
-        // Randomly select a wall
-        int randomIndex = rand() % walls.size();
-        Cell currentWall = walls[randomIndex];
+    int startX = rand() % (gridWidth / gridSize);
+    int startY = rand() % (screenHeight / gridSize);
+    gridColor[startX][startY] = LIGHTGRAY; // Start cell
 
-        // Check if the wall can be turned into a path
-        int directions[4][2] = { {1, 0}, {0, 1}, {-1, 0}, {0, -1} }; // Down, Right, Up, Left
-        std::vector<Cell> newCells;
+    std::vector<std::pair<int,int>> path;    
+    path.push_back({startX, startY}); 
 
-        for (auto& dir : directions) {
-            int newX = currentWall.x + dir[0];
-            int newY = currentWall.y + dir[1];
+    while (!path.empty()) {
+        int randomIndex = rand() % path.size();
+        std::pair<int,int> cur = path[randomIndex];
 
-            if (newX >= 0 && newX < gridWidth / gridSize && newY >= 0 && newY < screenHeight / gridSize) {
-                if (ColorsEqual(gridColor[newX][newY], DARKGRAY)) {
+        for (int i=0; i<4; i++) {
+            int nr = cur.first + dr[i];
+            int nc = cur.second + dc[i];
+
+            if (nr >= 0 && nr < gridWidth / gridSize && nc >= 0 && nc < screenHeight / gridSize) {
+                if (ColorsEqual(gridColor[nr][nc], DARKGRAY)) {
                     int countAdjacentPaths = 0;
 
-                    for (auto& d : directions) {
-                        int checkX = newX + d[0];
-                        int checkY = newY + d[1];
+                    for (int j=0; j<4; j++) {
+                        int checkX = nr + dr[j];
+                        int checkY = nc + dc[j];
                         if (checkX >= 0 && checkX < gridWidth / gridSize && checkY >= 0 && checkY < screenHeight / gridSize) {
                             if (ColorsEqual(gridColor[checkX][checkY], LIGHTGRAY)) {
                                 countAdjacentPaths++;
@@ -290,27 +271,15 @@ void generateMaze(std::vector<std::vector<Color>> &gridColor) {
                         }
                     }
 
-                    if (countAdjacentPaths == 1) { // Only one adjacent path
-                        gridColor[newX][newY] = LIGHTGRAY; // Create a path
-                        newCells.push_back({newX, newY, false}); // Add it to new cells
+                    if (countAdjacentPaths == 1) { 
+                        gridColor[nr][nc] = LIGHTGRAY;
+                        path.push_back({nr, nc});
                     }
                 }
             }
         }
 
-        // Remove the wall from the list
-        walls.erase(walls.begin() + randomIndex);
-
-        // Add the new walls to the list
-        walls.insert(walls.end(), newCells.begin(), newCells.end());
-    }
-}
-
-void resetMaze(std::vector<std::vector<Color>> &gridColor) {
-    for (int x = 0; x < gridWidth / gridSize; x++) {
-        for (int y = 0; y < screenHeight / gridSize; y++) {
-            gridColor[x][y] = DARKGRAY; // Reset all cells to walls
-        }
+        path.erase(path.begin() + randomIndex);
     }
 }
 
@@ -320,7 +289,7 @@ int main(void) {
     
     SetTargetFPS(60);
 
-    srand(static_cast<unsigned int>(time(nullptr))); // Seed for random number generation
+    srand(static_cast<unsigned int>(time(nullptr)));
 
     std::vector<std::vector<std::vector<Color>>> gridColor(4, std::vector<std::vector<Color>>(gridWidth / gridSize, std::vector<Color>(gridHeight / gridSize)));
     for(int k=1; k<4; k++){
@@ -344,12 +313,12 @@ int main(void) {
 
     // Rectangle generateMaze = {screenWidth - 50, screenHeight - 50, 50, 50};
 
-    const Rectangle generateMazeButton = { screenWidth - 200, 500, 130, 40 }; // Button position and size
+    const Rectangle generateMazeButton = { screenWidth - 200, 500, 130, 40 }; 
     bool buttonPressed = false;
     bool running_bfs = false;
     bool running_dijakstra = false;
     bool running_a_star = false;
-    const double stepDelay = 1.0 / 100.0; // Time between steps (1 FPS for visualization)
+    const double stepDelay = 1.0 / 100.0; 
     double timeSinceLastStep = 0.0;
 
     std::queue<std::vector<int>> q_bfs; // queue for bfs
@@ -372,13 +341,6 @@ int main(void) {
     while(!WindowShouldClose()){
 
         if (CheckCollisionPointRec(GetMousePosition(), generateMazeButton) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-            for(int k=1; k<4; k++)
-                resetMaze(gridColor[k]); // Reset maze
-            buttonPressed = true; // Indicate button was pressed
-        }
-
-        if (buttonPressed) {
-            // Generate the maze
             generateMaze(gridColor[1]);
             for(int k=2; k<4; k++){
                 for(int i=0; i<gridWidth/gridSize;i++){
@@ -537,7 +499,7 @@ int main(void) {
                 if (found_bfs_path == 2){
                     reset = false;
                     found_bfs_path = false;
-                    running_bfs = false; // Stop BFS if end is reached
+                    running_bfs = false; 
                 }
             }
         }
@@ -572,7 +534,7 @@ int main(void) {
                 if (found_dijakstra_path == 2){
                     reset = false;
                     found_dijakstra_path = 0;
-                    running_dijakstra = false; // Stop BFS if end is reached
+                    running_dijakstra = false; 
                 }
             }
         }
@@ -607,7 +569,7 @@ int main(void) {
                 if (found_a_star_path == 2){
                     reset = false;
                     found_a_star_path = 0;
-                    running_a_star = false; // Stop BFS if end is reached
+                    running_a_star = false; 
                 }
             }
         }
