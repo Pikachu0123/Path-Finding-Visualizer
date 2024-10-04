@@ -17,8 +17,8 @@ cmake ..
 make
 sudo make install
 
-mkdir ./my_raylib_project
-cd ./my_raylib_project
+mkdir ./pathfinding_visualizer
+cd ./pathfinding_visualizer
 touch main.cpp
 ```
 
